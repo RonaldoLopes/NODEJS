@@ -2,11 +2,42 @@ const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+
+const JWTSecret= "dfsfsfr2edq34DAER43RFFWE";
 
 app.use(cors());
+
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
+//MIDDLEWARE
+
+function auth(req, res, next){
+    const authToken = req.headers['authorization'];
+
+    if(authToken != undefined){
+
+        const bearer = authToken.split(' ');
+        var token = bearer[1];
+
+        jwt.verify(token,JWTSecret,(err, data) => {
+            if(err){
+                res.status(401);
+                res.json({err:"Token inválido!"});
+            }else{
+
+                req.token = token;
+                req.loggedUser = {id: data.id,email: data.email};
+                req.empresa = "Empresa de teste";                
+                next();
+            }
+        });
+    }else{
+        res.status(401);
+        res.json({err:"Token inválido!"});
+    } 
+}
 
 var DB = {
     games: [
@@ -28,12 +59,27 @@ var DB = {
             year: 2012,
             price: 20
         }
+    ],
+    users: [
+        {
+           id: 1,
+           nome: "Ronaldo",
+           email: "ronaldoteste@gmail.com",
+           password: "123456"
+        },
+        {
+            id: 1,
+            nome: "Sara",
+            email: "sara@gmail.com",
+            password: "123456"
+         },
     ]
 }
 
-app.get("/game",(req, res) => {
+//Ao passar a função do middleware(auth) a rota está protegida e necessita de autenticação
+app.get("/game",auth,(req, res) => {
     res.statusCode = 200;
-    res.json(DB.games);
+    res.json({empresa: req.empresa,user: req.loggedUser,games: DB.games});
 });
 
 app.get("/game/:id",(req, res) => {
@@ -116,6 +162,37 @@ app.put("/game/:id",(req, res) => {
     }
 
 });
+
+app.post("/auth", (req, res) =>{
+    var{email, password} = req.body;
+
+    if(email != undefined){
+        var user = DB.users.find(u => u.email == email);
+
+        if(user != undefined){
+            if(user.password == password){
+                jwt.sign({id: user.id, email: user.email}, JWTSecret, {expiresIn: '48h'}, (err, token) =>{
+                    if(err){
+                        res.status(400);
+                        res.json({err: "Falha interna"});
+                    }else{
+                        res.status(200);
+                        res.json({token: token});
+                    }
+                });
+            }else{
+                res.status(401);
+                res.json({err: "Credenciais inválidas"});
+            }
+        }else{
+            res.status(404);
+            res.json({err: "E-mail não encontrado no sistema"});
+        }
+    }else{
+        res.status(400);
+        res.json({err: "E-mail inválido"});
+    }
+})
 
 app.listen(45678,() => {
     console.log("API RODANDO!");
