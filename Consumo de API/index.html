@@ -34,6 +34,12 @@
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script>
 
+    var axiosConfig = {
+        headers: {
+            Authorization: "Bearer " + localStorage.getItem("token")
+        }
+    }
+
     function login(){
         var emailField = document.getElementById("email");
         var passwordField = document.getElementById("password");
@@ -47,16 +53,12 @@
         }).then(res =>{
             var token = res.data.token;
             localStorage.setItem("token", token);
+            axios.readers.Authorization =  "Bearer " + localStorage.getItem("token");
         }).catch(err =>{
             alert("Login incorreto");
         })
     }
-
-    var axiosConfig = {
-        headers: {
-            Authorization: "Bearer " + localStorage.getItem("token")
-        }
-    }
+    
     
     function createGame(){
         var titleInput = document.getElementById("title");
